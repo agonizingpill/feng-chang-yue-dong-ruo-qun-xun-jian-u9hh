@@ -6,11 +6,21 @@ from .database import Session
 from .models import Visit,Hive
 from .screen_model import screen,reference_model
 from .yard_service import latest
+from .backtest_worker import execute_backtest,recover_stale
 queue=redis.Redis.from_url(os.getenv('REDIS_URL','redis://redis:6379/0'),decode_responses=True)
+recover_stale(queue)
+idle_ticks=0
 while True:
-    Path('/tmp/apiary-heartbeat').touch();job=queue.blpop('apiary:screening',timeout=3)
-    if not job:continue
-    task=json.loads(job[1]);points=[];evidence=reference_model()[1]
+    Path('/tmp/apiary-heartbeat').touch()
+    job=queue.blpop(['apiary:screening','apiary:backtests'],timeout=3)
+    if not job:
+        idle_ticks+=1
+        if idle_ticks>=20:recover_stale(queue);idle_ticks=0
+        continue
+    idle_ticks=0;stream,payload=job[0],job[1]
+    if stream=='apiary:backtests':
+        execute_backtest(json.loads(payload) if payload.startswith('{') else payload);continue
+    task=json.loads(payload);points=[];evidence=reference_model()[1]
     try:
         for key in task['visit_ids']:
             Path('/tmp/apiary-heartbeat').touch()

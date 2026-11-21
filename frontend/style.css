@@ -5,3 +5,8 @@ textarea{font:inherit;color:var(--ink);width:100%;padding:10px;border:1px solid 
 nav{display:flex;flex-wrap:wrap}nav a{flex:1 1 10%;min-width:120px}.checkline{display:flex;gap:8px;align-items:center}.checkline input{width:auto}textarea{width:100%;min-height:70px;padding:10px;background:#fffdf4;border:1px solid #cbbd94;font:inherit}.resource-layout article.sheet{margin-bottom:12px}@media(max-width:600px){nav a{min-width:30%;font-size:12px}}
 
 .resource-layout .lot-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.resource-layout .lot-grid .sheet{padding:16px}.resource-layout .lot-grid h3{font-size:18px}@media(max-width:800px){.resource-layout .lot-grid{grid-template-columns:1fr}}
+.badge.done,.badge.screened{color:var(--leaf);border-color:oklch(68% .07 135)}
+.badge.failed,.badge.voided{color:var(--red);border-color:oklch(65% .10 35)}
+.badge.queued,.badge.running{background:var(--wax)}
+.bt-report .measure{font-size:18px;text-align:right;white-space:nowrap}
+form.disabled{opacity:.75}

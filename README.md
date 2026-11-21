@@ -100,3 +100,19 @@ Seed增加FD-202611-A可用30kg、FD-HOLD隔离8kg、FD-EXPIRED已过期5kg，�
 GET /moves /insulation-lots /insulation-installs /spring-reviews供三角色；POST /moves、complete/cancel、POST /insulation-lots、POST /insulation-installs、PUT ventilation、POST remove及POST /spring-reviews允许蜂师/主管；move approve、insulation accept、spring pass及物料隔离仅主管，viewer全部只读。各新增模型均有外键；物料数量与春检值域由数据库和Pydantic校验。
 
 Seed只在缺失时增加IN-2026-WINTER 120件，不改人工库存/安装/春检；历史winter_ready无需补装以维持历史状态，新的春检动作才要求保温。真实证据在test-artifacts/gb-1027/v3/。本地检疫留痕不替代行政检疫证；每箱每季一条春检，本演示固定2026越冬季，无跨季归档。
+
+
+## V4 现场强弱与阈值回测
+
+原九页完整保留，新增“阈值回测”页（共十业务页）。回答“东坡、林缘各漏了多少弱群”，并在不动日常处置口径的前提下试算更优异常阈值。
+
+1. **现场强弱登记（FieldLabel）**：蜂师在异常分值出具前按巡检登记现场强/弱群，唯一关联Visit；同巡检再提交即更正，留更正人、时间与依据。未登记的巡检在回测页**单列**，且不进入任何回测样本。
+2. **样本切分（同箱不跨段）**：发起回测时按蜂场分层切分——每个蜂场内按`early_ratio`把蜂箱整体划入早期段或后期段，同一蜂箱的全部巡检只落一段，保证东坡、林缘在两段都有样本。切分结果与每箱分值、现场标签冻结进`BacktestRun.sample_snapshot`，是后续执行与重试的唯一事实来源。
+3. **阈值选择与检验**：候选阈值取早期段实际分值。在**早期误报不超过给定上限**的候选中选**漏报最少**者；漏报并列取误报更少，再并列取阈值更高（少打扰）。选出的试算阈值不接触后期段，直接在后期段检验漏报/误报。原阈值（IsolationForest `offset_`）与试算阈值分别计算总体与**东坡/林缘分场**的tp/fp/tn/fn。弱群为正类，`score<threshold`判弱；漏报=现场弱群未被识别，误报=现场强群被判异常。
+4. **更正先办，报告不可变**：更正与出报告并发时，登记事务用行锁先办——凡样本快照包含该巡检的在途（queued/running/failed）回测一律置`voided`并记录作废原因与操作人；已`done`批次不受影响，其`BacktestReport`（run_id唯一约束，一批次仅一份）保留出报告当时的判定与分值。
+5. **中断恢复与幂等**：worker启动及空闲周期扫描queued/running批次重新入队，从原快照继续；failed批次可手动重试，不重建样本。执行前检查报告是否已存在，配合唯一约束，任何重试都不会重复出报告。报告JSON另存artifacts卷`backtest-<code>.json`。
+
+接口：`GET/POST /field-labels`、`GET /field-labels/unregistered`、`GET/POST /backtests`、`POST /backtests/{id}/retry`。蜂师/主管可登记与发起，观察员只读。新增`backtest_models.py/backtest_schemas.py/backtest_routes.py/backtest_service.py/backtest_worker.py`，worker在原筛查队列外消费`apiary:backtests`队列；前端新增`pages/backtest.js`，筛查页与日常处置流程不变。
+
+Seed在原100条参考巡检外，为80箱补第二轮80条巡检（V-1118-001…080，含10个现场弱群），并为除V-1117-077外的全部巡检登记现场强弱（弱群口径=蜂量不足5框），共179条登记、1条未登记用于演示单列。三张新表由metadata补建，无旧表列变更；回测只读取分值与标签，不改写任何Visit的历史判定。
+

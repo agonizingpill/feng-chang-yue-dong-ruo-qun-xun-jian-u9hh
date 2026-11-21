@@ -23,3 +23,12 @@ class VisitState(StrEnum):
     CLOSED='closed'
     STALE='stale'
     BLOCKED='blocked'
+class BacktestState(StrEnum):
+    QUEUED='queued'
+    RUNNING='running'
+    DONE='done'
+    FAILED='failed'
+    VOIDED='voided'
+class FieldStrength(StrEnum):
+    STRONG='strong'
+    WEAK='weak'
